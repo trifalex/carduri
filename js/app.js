@@ -163,16 +163,49 @@
             el.style.animationDelay = (idx * 25) + "ms";
             el.style.setProperty("--brand", card.color || "#64748b");
             el.setAttribute("aria-label", "Deschide cardul " + card.name);
-            const first = card.name.charAt(0);
-            const rest = card.name.slice(1);
+            const words = card.name.split(" ");
+            const wordHtml = words.map((w, i) => {
+                if (i === 0) {
+                    return `<span class="card-word"><span class="card-name-first">${w.charAt(0)}</span>${w.slice(1)}</span>`;
+                }
+                return `<span class="card-word">${w}</span>`;
+            }).join("");
             el.innerHTML = `
                 <span class="card-dot" aria-hidden="true"><span class="card-dot-inner"></span></span>
-                <span class="card-name"><span class="card-name-first">${first}</span>${rest}</span>
+                <span class="card-name">${wordHtml}</span>
             `;
             el.addEventListener("click", () => openCard(card));
             grid.appendChild(el);
         });
+
+        fitCardNames();
     }
+
+    // Mareste textul fiecarui card cat sa umple latimea cardului,
+    // dar fara sa depaseasca o limita maxima (ca CCC, dm, C&A sa nu fie uriase).
+    function fitCardNames() {
+        const MAX = 22; // px - dimensiunea maxima (cat e acum CCC)
+        const MIN = 12; // px - cat poate scadea pentru cuvinte foarte lungi
+        grid.querySelectorAll(".card-name").forEach(nameEl => {
+            const avail = nameEl.clientWidth;
+            if (!avail) return;
+            nameEl.style.fontSize = MAX + "px";
+            let widest = 0;
+            nameEl.querySelectorAll(".card-word").forEach(w => {
+                widest = Math.max(widest, w.scrollWidth);
+            });
+            if (!widest) return;
+            let size = MAX * (avail / widest);
+            size = Math.max(MIN, Math.min(MAX, size));
+            nameEl.style.fontSize = size.toFixed(1) + "px";
+        });
+    }
+
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(fitCardNames, 120);
+    });
 
     function openCard(card) {
         modalTitle.textContent = card.name;
@@ -199,6 +232,13 @@
     });
 
     filterToggle.addEventListener("click", toggleFilter);
+
+    // Nu lasa browserul sa restaureze pozitia de scroll la refresh
+    // (altfel cardurile par ca urca sub header de la o reincarcare la alta).
+    if ("scrollRestoration" in history) {
+        history.scrollRestoration = "manual";
+    }
+    window.scrollTo(0, 0);
 
     render();
 })();
